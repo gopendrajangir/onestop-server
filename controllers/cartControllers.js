@@ -65,18 +65,18 @@ exports.moveToWishlist = catchAsync(async (req, res, next) => {
     }
   });
 
-  const updatedCart = await cart.save();
-
-  let updatedWishlist = wishlist;
+  await cart.save();
 
   if (cartUpdated) {
-    updatedWishlist = await wishlist.save();
+    await wishlist.save();
   }
+  req.wishlistItems = wishlist.items.filter(({ _id }) =>
+    productIds.includes(_id.toString())
+  );
 
   res.status(200).json({
     status: 'success',
-    cart: updatedCart,
-    wishlist: updatedWishlist,
+    wishlistItems: req.wishlistItems,
   });
 });
 
@@ -100,27 +100,31 @@ exports.addItem = catchAsync(async (req, res, next) => {
     if (req.sku.quantity >= cart.items[itemIdx].quantity + 1) {
       cart.items[itemIdx].quantity++;
       req.increased = true;
+      req.cartItem = cart.items[itemIdx];
     } else {
       return next(
         new AppError(404, 'We are sorry!! No items left in inventory')
       );
     }
   } else {
-    cart.items.push({
+    req.cartItem = cart.items.create({
       sku: req.sku._id,
       product: req.sku.productId,
       quantity: 1,
     });
+
+    cart.items.push(req.cartItem);
   }
 
-  req.updatedCart = await cart.save();
+  await cart.save();
+
   next();
 });
 
 exports.sendCartResult = (req, res, next) => {
   res.status(200).json({
     status: 'success',
-    cart: req.updatedCart,
+    cartItem: req.cartItem,
     increased: req.increased,
   });
 };
@@ -129,18 +133,15 @@ exports.removeItem = catchAsync(async (req, res, next) => {
   const cart = req.cart;
   const skuId = req.sku._id;
 
-  let updatedCart = req.cart;
-
   const itemIdx = cart.items.findIndex((item) => item.sku._id.equals(skuId));
 
   if (itemIdx > -1) {
     cart.items.splice(itemIdx, 1);
-    updatedCart = await cart.save();
+    await cart.save();
   }
 
   res.status(200).json({
     status: 'success',
-    cart: updatedCart,
   });
 });
 
@@ -148,9 +149,8 @@ exports.removeMultiples = catchAsync(async (req, res, next) => {
   const cart = req.cart;
   const { skuIds } = req.body;
 
-  let updatedCart = req.cart;
-
   let updated = false;
+
   skuIds.forEach((id) => {
     const itemIdx = cart.items.findIndex((item) => item.sku._id.equals(id));
     if (itemIdx > -1) {
@@ -159,11 +159,10 @@ exports.removeMultiples = catchAsync(async (req, res, next) => {
     }
   });
 
-  if (updated) updatedCart = await cart.save();
+  if (updated) await cart.save();
 
-  res.status(200).json({
+  res.status(204).json({
     status: 'success',
-    cart: updatedCart,
   });
 });
 
@@ -173,15 +172,14 @@ exports.updateItem = catchAsync(async (req, res, next) => {
 
   const { quantity, newSkuId } = req.body;
 
-  let updatedCart = cart;
-
   if (quantity >= 0) {
     const itemIdx = cart.items.findIndex((item) => item.sku._id.equals(skuId));
     if (itemIdx > -1) {
       if (req.sku.quantity >= quantity) {
         if (cart.items[itemIdx].quantity !== quantity) {
           cart.items[itemIdx].quantity = quantity;
-          updatedCart = await cart.save();
+          await cart.save();
+          req.cartItem = cart.items[itemIdx];
         }
       } else {
         return next(
@@ -203,12 +201,13 @@ exports.updateItem = catchAsync(async (req, res, next) => {
     );
     cart.items[currentSkuItemIdx].sku = newSkuId;
 
-    updatedCart = await cart.save();
+    await cart.save();
+    req.cartItem = cart.items[currentSkuItemIdx];
   }
 
   res.status(200).json({
     status: 'success',
-    cart: updatedCart,
+    cartItem: req.cartItem,
   });
 });
 

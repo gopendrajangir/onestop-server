@@ -27,7 +27,7 @@ exports.moveToCart = catchAsync(async (req, res, next) => {
 
   if (itemIdx > -1) {
     wishlist.items.splice(itemIdx, 1);
-    req.updatedWishlist = await wishlist.save();
+    await wishlist.save();
   }
   next();
 });
@@ -35,8 +35,7 @@ exports.moveToCart = catchAsync(async (req, res, next) => {
 exports.sendMoveToCartResponse = (req, res, next) => {
   res.status(200).json({
     status: 'succes',
-    cart: req.updatedCart,
-    wishlist: req.wishlist,
+    cartItem: req.cartItem,
     increased: req.increased,
   });
 };
@@ -56,9 +55,13 @@ exports.addToWishlist = catchAsync(async (req, res, next) => {
     updatedWishlist = await wishlist.save();
   }
 
+  const wishlistItem = updatedWishlist.items.filter((item) =>
+    item._id.equals(productId)
+  )[0];
+
   res.status(200).json({
     status: 'success',
-    wishlist: updatedWishlist,
+    wishlistItem,
   });
 });
 
@@ -66,33 +69,27 @@ exports.removeFromWishlist = catchAsync(async (req, res, next) => {
   const wishlist = req.wishlist;
   const { productId } = req.params;
 
-  let updatedWishlist = wishlist;
-
   const itemIdx = wishlist.items.findIndex((item) =>
     item._id.equals(productId)
   );
 
   if (itemIdx > -1) {
     wishlist.items.splice(itemIdx, 1);
-    updatedWishlist = await wishlist.save();
+    await wishlist.save();
   }
 
-  res.status(200).json({
+  res.status(204).json({
     status: 'success',
-    wishlist: updatedWishlist,
   });
 });
 
 exports.removeAllFromWishlist = catchAsync(async (req, res, next) => {
   const wishlist = req.wishlist;
 
-  let updatedWishlist = wishlist;
-
   wishlist.items = [];
-  updatedWishlist = await wishlist.save();
+  await wishlist.save();
 
-  res.status(200).json({
+  res.status(204).json({
     status: 'success',
-    wishlist: updatedWishlist,
   });
 });
