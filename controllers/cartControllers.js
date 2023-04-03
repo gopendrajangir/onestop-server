@@ -187,6 +187,11 @@ exports.updateItem = catchAsync(async (req, res, next) => {
         );
       }
     }
+  } else if (newSkuId && skuId.equals(newSkuId)) {
+    const currentSkuItemIdx = cart.items.findIndex((item) =>
+      item.sku._id.equals(skuId)
+    );
+    req.cartItem = cart.items[currentSkuItemIdx];
   } else if (newSkuId && !skuId.equals(newSkuId)) {
     const itemIdx = cart.items.findIndex((item) =>
       item.sku._id.equals(newSkuId)
